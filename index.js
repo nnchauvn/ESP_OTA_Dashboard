@@ -1,26 +1,35 @@
-const express = require("express");
-const multer = require("multer");
-const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const port = 3000;
 
-const upload = multer({ dest: "firmwares/" });
-
-// Upload firmware
-app.post("/upload", upload.single("firmware"), (req, res) => {
-  if (!req.file) return res.status(400).send("No file uploaded.");
-  res.send({ message: "Upload successful", filename: req.file.filename });
+// Configure storage for the OTA firmware file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'firmware'); // Folder to store firmware files
+  },
+  filename: function (req, file, cb) {
+    cb(null, 'firmware.bin');
+  }
 });
 
-// Serve OTA firmware
-app.get("/ota/latest", (req, res) => {
-  const firmwarePath = path.join(__dirname, "firmwares/latest.bin");
-  if (!fs.existsSync(firmwarePath)) return res.status(404).send("No firmware available.");
-  res.download(firmwarePath);
+const upload = multer({ storage: storage });
+
+// Endpoint to upload the firmware
+app.post('/upload', upload.single('firmware'), (req, res) => {
+  console.log('Firmware uploaded');
+  res.send('Firmware uploaded successfully');
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+// Serve the firmware to ESP32
+app.get('/firmware', (req, res) => {
+  const filePath = path.join(__dirname, 'firmware', 'firmware.bin');
+  res.sendFile(filePath);
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
